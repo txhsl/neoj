@@ -110,11 +110,13 @@ public class BinaryReader implements AutoCloseable {
 		obj.deserialize(this);
 		return obj;
 	}
-	
+
 	public <T extends Serializable> T[] readSerializableArray(Class<T> t) throws InstantiationException, IllegalAccessException, IOException {
-		@SuppressWarnings("unchecked")
-		T[] array = (T[])Array.newInstance(t, (int)readVarInt(0x10000000));
-//		System.out.println("arr.len==="+array.length);
+		return readSerializableArray(t, 0x10000000);
+	}
+	
+	public <T extends Serializable> T[] readSerializableArray(Class<T> t, int max) throws InstantiationException, IllegalAccessException, IOException {
+		T[] array = (T[])Array.newInstance(t, (int)readVarInt(max));
 		for (int i = 0; i < array.length; i++) {
 			array[i] = t.newInstance();
 			array[i].deserialize(this);
@@ -140,7 +142,7 @@ public class BinaryReader implements AutoCloseable {
 	}
 	
 	public long readVarInt(long max) throws IOException {
-        long fb = Byte.toUnsignedLong(readByte());
+	long fb = Byte.toUnsignedLong(readByte());
         long value;
         if (fb == 0xFD) {
             value = Short.toUnsignedLong(readShort());

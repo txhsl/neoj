@@ -82,6 +82,10 @@ public class Fixed8 implements Comparable<Fixed8>, Serializable {
     	return value; 
     }
 
+    public void assign(Fixed8 other) {
+        this.value = other.getData();
+    }
+
     @Override
     public int hashCode() {
         return Long.valueOf(value).hashCode();

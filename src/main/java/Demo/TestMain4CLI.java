@@ -1,5 +1,6 @@
 package Demo;
 
+import java.security.spec.ECPoint;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -240,14 +241,18 @@ public class TestMain4CLI {
 //		String url = "http://localhost:20334";
 //		String accessToken = "";				// 从认证服务器获取该访问令牌
 //		UserWalletManager wm = UserWalletManager.getWallet(path, url, accessToken);
-		
-		// v1.1
-		String neoUrl = "http://127.0.0.1:20334";
-		String neoToken = "";
-		String path = "./4.db3";
-		AccountManager wm = AccountManager.getWallet(path, neoUrl, neoToken);
-		print(String.format("[param=%s,%s]", neoUrl, path));
-		print(String.format("start to test....hh:%s", wm.getBlockHeight()));
-		return wm;
+		try {
+			// v1.1
+			String neoUrl = "http://127.0.0.1:20334";
+			String neoToken = "";
+			String path = "./4.db3";
+			AccountManager wm = AccountManager.getWallet(path, neoUrl, neoToken);
+			print(String.format("[param=%s,%s]", neoUrl, path));
+			print(String.format("start to test....hh:%s", wm.getBlockHeight()));
+			return wm;
+		}catch (Exception e){
+			e.printStackTrace();
+		}
+		return null;
 	}
 }

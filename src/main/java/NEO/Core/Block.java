@@ -27,7 +27,7 @@ public class Block extends Inventory {
     /**
      *  区块版本
      */
-    public int version; 
+    public int version;
     /**
      *  前一个区块的散列值
      */
@@ -47,7 +47,7 @@ public class Block extends Inventory {
     /**
      *  随机数
      */
-    public long nonce; 
+    public long consensusData;
     /**
      *  下一个区块的记账合约的散列值
      */
@@ -74,7 +74,7 @@ public class Block extends Inventory {
             _header.merkleRoot = this.merkleRoot;
             _header.timestamp = this.timestamp;
             _header.height = this.height;
-            _header.nonce = this.nonce;
+            _header.consensusData = this.consensusData;
             _header.nextMiner = this.nextMiner;
             _header.script = this.script;
             _header.transactions = new Transaction[0];
@@ -105,7 +105,7 @@ public class Block extends Inventory {
     	// 未签名
         deserializeUnsigned(reader);
         // 填充值
-        if (reader.readByte() != 1) 
+        if (reader.readByte() != 1)
         	throw new IOException();
         // 脚本
         try {
@@ -114,8 +114,11 @@ public class Block extends Inventory {
         	throw new IOException(ex);
 		}
         // 交易
-        transactions = new Transaction[(int) reader.readVarInt(0x10000000)];
+        transactions = new Transaction[(int) reader.readVarInt(0x10000)];
         //transactions = new Transaction[reader.readInt()]; // Code of unknown history
+        if (transactions.length == 0)
+            throw new IOException();
+
         for (int i = 0; i < transactions.length; i++) {
             transactions[i] = Transaction.deserializeFrom(reader);
         }
@@ -135,7 +138,7 @@ public class Block extends Inventory {
             merkleRoot = reader.readSerializable(UInt256.class);
             timestamp = reader.readInt();
             height = reader.readInt();
-            nonce = Long.valueOf(reader.readLong());
+            consensusData = Long.valueOf(reader.readLong());
 			nextMiner = reader.readSerializable(UInt160.class);
 	        transactions = new Transaction[0];
 		} catch (InstantiationException | IllegalAccessException ex) {
@@ -158,7 +161,7 @@ public class Block extends Inventory {
         writer.writeSerializable(merkleRoot);
         writer.writeInt(timestamp);
         writer.writeInt(height);
-        writer.writeLong(nonce);
+        writer.writeLong(consensusData);
         writer.writeSerializable(nextMiner);
     }
 
@@ -246,7 +249,7 @@ public class Block extends Inventory {
         json.set("merkleroot", new JString(merkleRoot.toString()));
         json.set("time", new JNumber(timestamp));
         json.set("height", new JNumber(Integer.toUnsignedLong(height)));
-        json.set("nonce", new JNumber(nonce));
+        json.set("nonce", new JNumber(consensusData));
 //        json.set("nextminer", new JString(Wallet.toAddress(nextMiner)));
         json.set("script", script.json());
         json.set("tx", new JArray(Arrays.stream(transactions).map(p -> p.json()).toArray(JObject[]::new)));

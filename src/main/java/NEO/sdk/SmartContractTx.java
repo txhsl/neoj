@@ -6,13 +6,18 @@ import NEO.Core.Scripts.Program;
 import NEO.Core.Scripts.ScriptBuilder;
 import NEO.Fixed8;
 import NEO.Helper;
+import NEO.UInt160;
+import NEO.UInt256;
+import NEO.Wallets.Account;
 import NEO.Wallets.Contract;
+import NEO.Wallets.Wallet;
 import NEO.sdk.abi.AbiFunction;
 import NEO.sdk.abi.Parameter;
 import com.alibaba.fastjson.JSON;
 import org.bouncycastle.math.ec.ECPoint;
 
 import java.lang.reflect.Array;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +31,7 @@ public class SmartContractTx {
     public SmartContractTx(){
 
     }
-    public static Transaction makeInvocationTransaction(String contractAddress, ECPoint publicKey, AbiFunction abiFunction) throws Exception {
+    public static Transaction makeInvocationTransaction(String contractAddress, ECPoint publicKey, AbiFunction abiFunction, Fixed8 fee) throws Exception {
         if (contractAddress == null) {
             throw new Exception("null contractHash");
         }
@@ -60,7 +65,7 @@ public class SmartContractTx {
         params = Helper.addBytes(params, new byte[]{0x67});
         params = Helper.addBytes(params, Helper.hexToBytes(contractAddress));
 
-        Transaction tx = makeInvocationTransaction(params,publicKey);
+        Transaction tx = makeInvocationTransaction(params, publicKey, fee);
         return tx;
     }
 
@@ -140,7 +145,7 @@ public class SmartContractTx {
         return tx;
     }
 
-    public static InvocationTransaction makeInvocationTransaction(byte[] paramsHexStr, ECPoint publicKey) throws Exception {
+    public static InvocationTransaction makeInvocationTransaction(byte[] paramsHexStr, ECPoint publicKey, Fixed8 fee) throws Exception {
         InvocationTransaction tx = new InvocationTransaction(publicKey);
         tx.version = 1;
         tx.attributes = new TransactionAttribute[2];
@@ -153,7 +158,50 @@ public class SmartContractTx {
         tx.inputs = new TransactionInput[0];
         tx.outputs = new TransactionOutput[0];
         tx.script = paramsHexStr;
-        tx.gas = new Fixed8(0);
+
+        Fixed8 gasFee = null;
+        Fixed8 netFee = null;
+        if (tx.systemFee().compareTo(Fixed8.ZERO) <= 0) {
+            gasFee = Fixed8.ZERO;
+            netFee = Fixed8.fromDecimal(new BigDecimal("0.0001"));
+        }
+        else {
+            gasFee = tx.systemFee();
+            netFee = Fixed8.ZERO;
+        }
+
+        tx.gas = gasFee;
+        fee.assign(netFee);
+        return tx;
+    }
+
+    public static ContractTransaction makeContractTransaction(String toAddress, UInt256 assetId, Fixed8 amount, Fixed8 fee) {
+        ContractTransaction tx = new ContractTransaction();
+
+        TransactionOutput output = new TransactionOutput();
+        output.assetId = assetId;
+        output.value = amount;
+        output.scriptHash = Wallet.toScriptHash(toAddress);
+
+        tx.version = 0;
+        tx.attributes = new TransactionAttribute[0];
+        tx.inputs = new TransactionInput[0];
+        tx.outputs = new TransactionOutput[1];
+        tx.outputs[0] = output;
+        tx.scripts = new Program[0];
+
+        Fixed8 gasFee = null;
+        Fixed8 netFee = null;
+        if (tx.systemFee().compareTo(Fixed8.ZERO) <= 0) {
+            gasFee = Fixed8.ZERO;
+            netFee = Fixed8.fromDecimal(new BigDecimal("0.0001"));
+        }
+        else {
+            gasFee = tx.systemFee();
+            netFee = Fixed8.ZERO;
+        }
+
+        fee.assign(netFee);
         return tx;
     }
 }

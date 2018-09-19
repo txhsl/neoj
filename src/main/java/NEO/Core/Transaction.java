@@ -16,6 +16,11 @@ import NEO.Network.*;
  */
 public abstract class Transaction extends Inventory {
 	/**
+	 * 最大属性数量
+	 */
+	private final int MaxTransactionAttributes = 16;
+
+	/**
 	 * 交易类型
 	 */
 	public final TransactionType type;
@@ -70,7 +75,7 @@ public abstract class Transaction extends Inventory {
         try {
             version = reader.readByte();
             deserializeExclusiveData(reader);
-			attributes = reader.readSerializableArray(TransactionAttribute.class);
+			attributes = reader.readSerializableArray(TransactionAttribute.class, MaxTransactionAttributes);
 	        inputs = reader.readSerializableArray(TransactionInput.class);
 	        TransactionInput[] inputs_all = getAllInputs().toArray(TransactionInput[]::new);
 	        for (int i = 1; i < inputs_all.length; i++) {
@@ -238,19 +243,111 @@ public abstract class Transaction extends Inventory {
         }
         return _references;
 	}
-	
+
 	/**
 	 * 系统费用
 	 */
 	public Fixed8 systemFee() {
-		return Fixed8.ZERO;
+		switch (type){
+			case IssueTransaction:
+				return Fixed8.fromLong(Settings.ISSUE_TX_FEE);
+			case PublishTransaction:
+				return Fixed8.fromLong(Settings.PUBLISH_TX_FEE);
+			case EnrollmentTransaction:
+				return Fixed8.fromLong(Settings.ENROLLMENT_TX_FEE);
+			case RegisterTransaction:
+				return Fixed8.fromLong(Settings.REGISTER_TX_FEE);
+			default:
+				return Fixed8.ZERO;
+		}
 	}
-	
+
+	/**
+	 * 网络费用
+	 */
+	private Fixed8 _networkFee = null;
+	public Fixed8 networkFee() {
+
+		if (_networkFee == null) {
+			Fixed8 input = Fixed8.ZERO;
+
+			Map<TransactionInput, TransactionOutput> refs = references();
+
+			for (TransactionInput coinRef : refs.keySet()) {
+				TransactionOutput to = refs.get(coinRef);
+				//if (to.assetId == Blockchain.utilityToken().hash()) {
+				if (to.assetId == Blockchain.UtilityToken) {
+					input = input.add(to.value);
+				}
+			}
+
+			Fixed8 output = Fixed8.ZERO;
+
+			for (TransactionOutput to : outputs) {
+				//if (to.assetId == Blockchain.utilityToken().hash()) {
+				if (to.assetId == Blockchain.UtilityToken) {
+					output = output.add(to.value);
+				}
+			}
+			_networkFee = (input.subtract(output)).subtract(systemFee());
+		}
+
+		return _networkFee;
+	}
+
 	/**
 	 * 校验
 	 */
 	@Override
 	public boolean verify() {
+		return true;
+	}
+
+	public boolean verify(Transaction[] mempool) {
+		for (int i = 1; i < inputs.length; i++) {
+			for (int j = 0; j < i; j++) {
+				if (inputs[i].prevHash == inputs[j].prevHash && inputs[i].prevIndex == inputs[j].prevIndex)
+					return false;
+			}
+		}
+		if (Arrays.stream(mempool).filter(p -> p != this).map(p -> p.inputs).filter(p -> Arrays.asList(inputs).contains(p)).count() > 0)
+			return false;
+		if (Blockchain.current().isDoubleSpend(this))
+			return false;
+		//for (Map.Entry<UInt256, List<TransactionOutput>> group : Arrays.stream(outputs).collect(Collectors.groupingBy(p -> p.assetId)).entrySet()) {
+
+		TransactionResult[] results = getTransactionResults();
+		if (results == null)
+			return false;
+		TransactionResult[] results_destroy = Arrays.stream(results).filter(p -> p.amount.compareTo(Fixed8.ZERO) > 0).toArray(TransactionResult[]::new);
+		if (results_destroy.length > 1)
+			return false;
+		//if (results_destroy.length == 1 && results_destroy[0].assetId != Blockchain.utilityToken().hash())
+		if (results_destroy.length == 1 && results_destroy[0].assetId != Blockchain.UtilityToken)
+			return false;
+		if (systemFee().compareTo(Fixed8.ZERO) > 0 && (results_destroy.length == 0 || results_destroy[0].amount.compareTo(systemFee()) < 0))
+			return false;
+		TransactionResult[] results_issue = Arrays.stream(results).filter(p -> p.amount.compareTo(Fixed8.ZERO) < 0).toArray(TransactionResult[]::new);
+		switch (type) {
+			case MinerTransaction:
+			case ClaimTransaction:
+				//if (Arrays.stream(results_issue).allMatch(p -> p.assetId != Blockchain.utilityToken().hash()))
+				if (Arrays.stream(results_issue).allMatch(p -> p.assetId != Blockchain.UtilityToken))
+					return false;
+				break;
+			case IssueTransaction:
+				//if (Arrays.stream(results_issue).allMatch(p -> p.assetId == Blockchain.utilityToken().hash()))
+				if (Arrays.stream(results_issue).allMatch(p -> p.assetId == Blockchain.UtilityToken))
+					return false;
+				break;
+				default:
+					if (results_issue.length > 0)
+						return false;
+					break;
+		}
+		if (Arrays.stream(attributes).filter(p -> p.usage == TransactionAttributeUsage.ECDH02 || p.usage == TransactionAttributeUsage.ECDH03).count() > 1)
+			return false;
+		//return this.VerifyScripts();
 		return true;
 	}
 }

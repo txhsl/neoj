@@ -2,6 +2,7 @@ package NEO.Core;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -127,7 +128,51 @@ public abstract class Blockchain implements AutoCloseable {
 
     public abstract boolean containsUnspent(UInt256 hash, int index) throws Exception;
 
-    public abstract Stream<RegisterTransaction> getAssets();
+    public Stream<RegisterTransaction> getAssets(){
+        return null;
+    }
+
+    public static UInt256 GoverningToken = UInt256.parse("c56f33fc6ecfcd0c225c4ab356fee59390af8560be0e930faebe74a6daff7c9b");
+    private static RegisterTransaction _governingToken;
+    public static RegisterTransaction governingToken() {
+        if (_governingToken == null) {
+            _governingToken = new RegisterTransaction();
+            _governingToken.assetType = AssetType.GoverningToken;
+            _governingToken.name = "[{\"lang\":\"zh-CN\",\"name\":\"小蚁股\"},{\"lang\":\"en\",\"name\":\"AntShare\"}]";
+            _governingToken.description = "";
+            _governingToken.recordType = RecordType.UTXO;
+            _governingToken.amount = Fixed8.fromLong(100000000);
+            _governingToken.precision = 0;
+            _governingToken.issuer = ECC.secp256r1.getCurve().getInfinity();
+            _governingToken.admin = Program.toScriptHash(new byte[]{(byte)81});
+            _governingToken.attributes = new TransactionAttribute[0];
+            _governingToken.inputs = new TransactionInput[0];
+            _governingToken.outputs = new TransactionOutput[0];
+            _governingToken.scripts = new Program[0];
+        }
+        return _governingToken;
+    }
+
+    public static final UInt256 UtilityToken = UInt256.parse("602c79718b16e442de58778e148d0b1084e3b2dffd5de6b7b16cee7969282de7");
+    private static RegisterTransaction _utilityToken;
+    public static RegisterTransaction utilityToken() {
+        if (_utilityToken == null) {
+            _utilityToken = new RegisterTransaction();
+            _utilityToken.assetType = AssetType.UtilityToken;
+            _utilityToken.name = "[{\"lang\":\"zh-CN\",\"name\":\"小蚁币\"},{\"lang\":\"en\",\"name\":\"AntCoin\"}]";
+            _utilityToken.description = "";
+            _utilityToken.recordType = RecordType.UTXO;
+            _utilityToken.amount = Fixed8.fromLong((long) Arrays.stream(Blockchain.MINTING_AMOUNT).sum() * Blockchain.DECREMENT_INTERVAL);
+            _utilityToken.precision = 8;
+            _utilityToken.issuer = ECC.secp256r1.getCurve().getInfinity();
+            _utilityToken.admin = Program.toScriptHash(new byte[]{(byte)0});
+            _utilityToken.attributes = new TransactionAttribute[0];
+            _utilityToken.inputs = new TransactionInput[0];
+            _utilityToken.outputs = new TransactionOutput[0];
+            _utilityToken.scripts = new Program[0];
+        }
+        return _utilityToken;
+    }
 
     /**
      *  根据指定的高度，返回对应的区块信息

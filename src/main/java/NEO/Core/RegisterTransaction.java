@@ -5,10 +5,10 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.HashSet;
 
+import NEO.Helper;
 import org.bouncycastle.math.ec.ECPoint;
 
 import NEO.Fixed8;
-import NEO.Helper;
 import NEO.UInt160;
 import NEO.Core.Scripts.Program;
 import NEO.Cryptography.ECC;
@@ -18,6 +18,7 @@ import NEO.IO.Json.JNumber;
 import NEO.IO.Json.JObject;
 import NEO.IO.Json.JString;
 import NEO.Wallets.Contract;
+import org.bouncycastle.math.ec.custom.sec.SecP256R1Curve;
 
 
 /**
@@ -65,34 +66,41 @@ public class RegisterTransaction extends Transaction {
 	@Override
 	protected void deserializeExclusiveData(BinaryReader reader) throws IOException {
 		try {
-			name = reader.readVarString();
-			description = reader.readVarString();
-			precision = reader.readByte();
 			assetType = AssetType.valueOf(reader.readByte());
-			recordType = RecordType.valueOf(reader.readByte());
-	        amount = reader.readSerializable(Fixed8.class);
-	        byte[] xx = reader.readVarBytes();
-	        byte[] yy = reader.readVarBytes();
+			name = reader.readVarString();
+			amount = reader.readSerializable(Fixed8.class);
+			//description = reader.readVarString();
+			precision = reader.readByte();
+			//recordType = RecordType.valueOf(reader.readByte());
+	        //issuer = ECC.deserializeFrom(reader, new SecP256R1Curve());
+			byte[] xx = reader.readVarBytes();
+			byte[] yy = reader.readVarBytes();
+			issuer = ECC.secp256r1.getCurve().createPoint(
+					new BigInteger(1,xx), new BigInteger(1,yy));
 	        admin = reader.readSerializable(UInt160.class);
-            issuer = ECC.secp256r1.getCurve().createPoint(
-	        		new BigInteger(1,xx), new BigInteger(1,yy));
 		} catch (Exception ex) {
 			throw new IOException(ex);
 		}
 	}
 	@Override
+	protected void onDeserialized() throws IOException {
+		//if (assetType == AssetType.GoverningToken && !hash().equals(Blockchain.governingToken().hash()))
+		if (assetType == AssetType.GoverningToken && !hash().equals(Blockchain.GoverningToken))
+			throw new IOException();
+		//if (assetType == AssetType.UtilityToken && !hash().equals(Blockchain.utilityToken().hash()))
+		if (assetType == AssetType.UtilityToken && !hash().equals(Blockchain.UtilityToken))
+			throw new IOException();
+	}
+	@Override
 	protected void serializeExclusiveData(BinaryWriter writer) throws IOException {
-        writer.writeVarString(name);
-        writer.writeVarString(description);
-        writer.writeByte(precision);
         writer.writeByte(assetType.value());
-        writer.writeByte(recordType.value());
+        writer.writeVarString(name);
         writer.writeSerializable(amount);
-        writer.writeVarBytes(Helper.removePrevZero(issuer.getXCoord().toBigInteger().toByteArray()));
-        writer.writeVarBytes(Helper.removePrevZero(issuer.getYCoord().toBigInteger().toByteArray()));
-//        writer.writeVarBytes(issuer.getXCoord().toBigInteger().toByteArray());
-//        writer.writeVarBytes(issuer.getYCoord().toBigInteger().toByteArray());
-        writer.writeSerializable(admin);
+        writer.writeByte(precision);
+		//writer.writeVarBytes(ECC.encodePoint(issuer, true));
+		writer.writeVarBytes(Helper.removePrevZero(issuer.getXCoord().toBigInteger().toByteArray()));
+		writer.writeVarBytes(Helper.removePrevZero(issuer.getYCoord().toBigInteger().toByteArray()));
+		writer.writeSerializable(admin);
 	}
 	
 	/**
@@ -104,6 +112,8 @@ public class RegisterTransaction extends Transaction {
         hashes.add(Program.toScriptHash(Contract.createSignatureRedeemScript(issuer)));
         return hashes.stream().sorted().toArray(UInt160[]::new);
 	}
+
+
 	
 	@Override
     public JObject json() {
@@ -125,5 +135,5 @@ public class RegisterTransaction extends Transaction {
 	public String toString() {
 		return "RegisterTransaction [name=" + name + "]";
 	}
-	
+
 }

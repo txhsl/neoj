@@ -1,12 +1,17 @@
 package Demo;
 
+import NEO.Core.Blockchain;
 import NEO.Core.SignatureContext;
 import NEO.Core.Transaction;
+import NEO.Fixed8;
 import NEO.Helper;
 import NEO.IO.Json.JArray;
 import NEO.IO.Json.JNumber;
 import NEO.IO.Json.JObject;
 import NEO.IO.Json.JString;
+import NEO.Implementations.Blockchain.RPC.RpcBlockchain;
+import NEO.Implementations.Wallets.SQLite.UserWallet;
+import NEO.Settings;
 import NEO.UInt160;
 import NEO.Wallets.Account;
 import NEO.Wallets.Contract;
@@ -32,11 +37,17 @@ public class Nep5Demo {
 	public static void main(String[] args) throws Exception {
         System.out.println("Hi NEO, Nep-5 smartcontract invoke test!");
 
-		Account account1 = new Account(Helper.hexToBytes(privatekey1));
+        Blockchain bc = new RpcBlockchain(null);
+        Blockchain.register(bc);
+
+		Settings.getSettings(Settings.CONFIG_PRIVNET);
+		UserWallet uw = UserWallet.create("Nep5Demo", "Nep5Demo");
+
+		Account account1 = uw.createAccount(Helper.hexToBytes(privatekey1));
 		contract1 = Contract.createSignatureContract(account1.publicKey);
 		System.out.println("contract1 address:" + contract1.address());
 
-		Account account2 = new Account(Helper.hexToBytes(privatekey2));
+		Account account2 = uw.createAccount(Helper.hexToBytes(privatekey2));
 		contract2 = Contract.createSignatureContract(account2.publicKey);
 		System.out.println("contract2 address:" + contract2.address());
 
@@ -57,8 +68,10 @@ public class Nep5Demo {
 		func.setParamsValue(Wallet.toScriptHash(contract1.address()).toArray(),Wallet.toScriptHash(contract2.address()).toArray(),Long.valueOf(1));
 
 		//make transaction
-		Transaction tx = SmartContractTx.makeInvocationTransaction(Helper.reverse("5bb169f915c916a5e30a3c13a5e0cd228ea26826"),account1.publicKey,func);
+		Fixed8 fee = new Fixed8();
+		Transaction tx = SmartContractTx.makeInvocationTransaction(Helper.reverse("5bb169f915c916a5e30a3c13a5e0cd228ea26826"), account1.publicKey, func, fee);
 		System.out.println(tx.hash().toString());
+		tx = uw.makeTransaction(tx, fee);
 
 		//sign tx
 		SignatureContext context= new SignatureContext(tx,new UInt160[]{Wallet.toScriptHash(contract1.address())});
@@ -70,7 +83,7 @@ public class Nep5Demo {
 		String txHex = Helper.toHexString(tx.toArray());
 
 		//send tx to neo node
-		sendRawTransaction("http://127.0.0.1:20332",txHex);
+		sendRawTransaction("http://127.0.0.1:30333",txHex);
 	}
 	public static boolean sign(SignatureContext context, Contract contract, String privateKey) {
 		boolean fSuccess = false;
@@ -114,6 +127,8 @@ public class Nep5Demo {
 		request.set("method", new JString(method));
 		request.set("params", new JArray(params));
 		request.set("id", new JNumber(1));
+
+		System.out.println("request: " + request.toString());
 		return request;
 	}
 	private static JObject send(String url,JObject request) throws IOException {

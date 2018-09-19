@@ -184,7 +184,7 @@ public class OnChainSDKHelper {
 		sb.append("\n").append("merkleRoot:"+bb.merkleRoot.toString());
 		sb.append("\n").append("timestamp:"+new Date(bb.timestamp * 1000L));
 		sb.append("\n").append("height:"+bb.height);
-		sb.append("\n").append("nonce:"+bb.nonce);
+		sb.append("\n").append("nonce:"+bb.consensusData);
 		sb.append("\n").append("nextMiner:"+bb.nextMiner.toString());
 		sb.append("\n").append("script:\n\t"+toHexString(bb.script.parameter) + "\n\t"+toHexString(bb.script.code));
 		sb.append("\n").append("transactions:..."+bb.transactions.length);
@@ -229,7 +229,7 @@ public class OnChainSDKHelper {
 	}
 	private static void print(Block blk) {
 		print("Height:"+blk.height);
-		print("nonce :"+blk.nonce);
+		print("nonce :"+blk.consensusData);
 		print("versio:"+blk.version);
 		print("hash  :"+blk.hash());
 		print("nextM :"+blk.nextMiner);

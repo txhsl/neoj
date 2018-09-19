@@ -25,6 +25,10 @@ public abstract class UIntBase implements Serializable {
         this.data_bytes = value;
     }
 
+    public int size(){
+        return  data_bytes.length;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == null) {
