@@ -9,11 +9,6 @@ import NEO.UIntBase;
 import java.math.BigDecimal;
 import java.util.NoSuchElementException;
 
-/**
- * @author: HuShili
- * @date: 2018/9/10
- * @description: none
- */
 public class TransferOutput {
     public UIntBase assetId;
     public BigDecimal value;

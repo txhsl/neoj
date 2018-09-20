@@ -289,7 +289,7 @@ public abstract class Wallet implements AutoCloseable {
     
     public Coin[] findUnspentCoins(UInt256 asset_id, Fixed8 amount, UInt160 from) {
     	synchronized (coins) {
-    		Stream<Coin> unspents = coins.stream().filter(p -> p.getState() == CoinState.Unspent);
+    		Stream<Coin> unspents = coins.stream().filter(p -> p.getState() == CoinState.Unspent && p.getState() != CoinState.Unconfirmed);
     		if (from != null) {
     			unspents = unspents.filter(p -> p.scriptHash.equals(from));
     		}
